@@ -9,7 +9,7 @@
 3. [Code Structure & Explanation](#code-structure--explanation)
 4. [User Interface Menu (Console Mode)](#user-interface-menu-console-mode)
 5. [Test Cases](#test-cases)
-    - [Test Case 1: Known RFC 6229 Vector (Key: "Key")](#test-case-1-known-rfc-6229-vector-key-key)
+    - [Test Case 1: Compare with Library Implementation](#test-case-1-compare-with-library-implementation)
     - [Test Case 2: Simple ASCII Key and Plaintext](#test-case-2-simple-ascii-key-and-plaintext)
     - [Test Case 3: Empty Plaintext](#test-case-3-empty-plaintext)
     - [Test Case 4: 1-Byte Key](#test-case-4-1-byte-key)
@@ -178,16 +178,20 @@ Click the badge below to view and manually trigger the test workflow:
 
 [![Run Tests](https://github.com/BTwiiin/RC4/actions/workflows/run-test.yml/badge.svg)](https://github.com/BTwiiin/RC4/actions/workflows/run-test.yml)
 
-### Test Case 1: Known RFC 6229 Vector (Key: "Key")
-- **Objective:** Validate encryption against a known test vector from RFC 6229.
-- **Details:** Uses key `"Key"` and plaintext `"Plaintext"`. The ciphertext should match the known value from RFC 6229.
+### Test Case 1: Compare with Library Implementation
+- **Objective:** Validate encryption against a known library implementation.
+- **Details:** Encrypt a plaintext message using the RC4 implementation and compare the output with the ciphertext produced by the `ARC4` function from the `Crypto.Cipher` module. This ensures that our implementation is consistent with a well-established library.
 ```python
-def test_known_vector_rfc6229():
-    key = "Key"
-    plaintext = b"Plaintext"
-    known_ciphertext_hex = "bbf316e8d940af0ad3"  # Example placeholder
-    ciphertext = rc4(key, plaintext)
-    assert ciphertext.hex() == known_ciphertext_hex.lower()
+def test_compare_with_library():
+    key = b"SecretKey"
+    plaintext = b"This is a test message for RC4."
+
+    our_ciphertext = rc4(key, plaintext)
+
+    cipher = ARC4.new(key)
+    library_ciphertext = cipher.encrypt(plaintext)
+
+    assert our_ciphertext == library_ciphertext, "Our RC4 output differs from ARC4 library output"
 ```
 
 ### Test Case 2: Simple ASCII Key and Plaintext
@@ -254,10 +258,14 @@ def test_binary_data_encryption():
 ```python
 def test_special_chars():
     key = "!@#$%^&*()"
-    plaintext = b"Line1\nLine2\r\n\tTabbed"
-    ciphertext = rc4(key, plaintext)
-    decrypted = rc4(key, ciphertext)
-    assert decrypted == plaintext
+    original_plaintext = b"Line1\nLine2\r\n\tTabbed"
+    
+    cycles = 5
+    plaintext = original_plaintext
+    for _ in range(cycles):
+        ciphertext = rc4(key, plaintext)
+        plaintext = rc4(key, ciphertext)
+        assert plaintext == original_plaintext, "Decrypted text does not match original"
 ```
 
 ## 📸 Screenshots

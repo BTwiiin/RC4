@@ -3,6 +3,7 @@ import threading
 import pytest
 from core.rc4 import ksa, prga, rc4
 from core.threads import user1_encrypt, user2_decrypt
+from Crypto.Cipher import ARC4
 
 def test_ksa_small_key():
     """
@@ -39,18 +40,20 @@ def test_encrypt_decrypt_roundtrip():
     assert decrypted == plaintext
 
 
-def test_known_vector_rfc6229():
-    """
-    Compares to a known RC4 test vector from RFC 6229 or external reference.
-    Key = "Key", Plaintext = "Plaintext".
-    """
-    key = "Key"
-    plaintext = b"Plaintext"
-    # This known ciphertext is from a reference in RFC 6229 or another known source.
-    # You should confirm the exact bytes for your reference.
-    known_ciphertext_hex = "bbf316e8d940af0ad3"  # Example placeholder
-    ciphertext = rc4(key, plaintext)
-    assert ciphertext.hex() == known_ciphertext_hex.lower()
+def test_compare_with_library():
+    """	
+    Compare our RC4 implementation with PyCryptodome's ARC4.	
+    """	
+    key = b"SecretKey"
+    plaintext = b"This is a test message for RC4."
+
+    our_ciphertext = rc4(key, plaintext)
+
+    cipher = ARC4.new(key)
+    library_ciphertext = cipher.encrypt(plaintext)
+
+    assert our_ciphertext == library_ciphertext, "Our RC4 output differs from ARC4 library output"
+
 
 
 def test_empty_plaintext():
@@ -78,14 +81,20 @@ def test_large_key():
 
 def test_special_chars():
     """
-    Special characters in both key and plaintext.
+    Special characters in both key and plaintext with repeated encryption/decryption cycles.
     """
     key = "!@#$%^&*()"
-    plaintext = b"Line1\nLine2\r\n\tTabbed"
-    ciphertext = rc4(key, plaintext)
-    # Decrypt
-    decrypted = rc4(key, ciphertext)
-    assert decrypted == plaintext
+    original_plaintext = b"Line1\nLine2\r\n\tTabbed"
+    
+    # Perform multiple encryption and decryption cycles
+    cycles = 5  # Number of repeated cycles
+    plaintext = original_plaintext
+    for _ in range(cycles):
+        ciphertext = rc4(key, plaintext)
+        plaintext = rc4(key, ciphertext)  # Decrypt back to original
+        # After decryption, plaintext should match original
+        assert plaintext == original_plaintext, "Decrypted text does not match original"
+
 
 
 @pytest.mark.parametrize("key, plaintext", [
