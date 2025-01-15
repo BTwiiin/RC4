@@ -187,6 +187,9 @@ Users can select an option by entering the corresponding number to perform encry
 
 ## Test Cases
 
+[![Run Tests](https://github.com/BTwiiin/RC4/actions/workflows/run-tests.yml/badge.svg)](https://github.com/BTwiiin/RC4/blob/master/.github/workflows/run-test.yml)
+
+
 ### Test Case 1: Known RFC 6229 Vector (Key: "Key")
 - **Objective:** Validate encryption against a known test vector from RFC 6229.
 - **Details:** Uses key `"Key"` and plaintext `"Plaintext"`. The ciphertext should match the known value from RFC 6229.
