@@ -1,7 +1,13 @@
+import queue
+import threading
 import pytest
-from rc4 import ksa, prga, rc4
+from core.rc4 import ksa, prga, rc4
+from core.threads import user1_encrypt, user2_decrypt
 
 def test_ksa_small_key():
+    """
+    Test the KSA function with a small key.
+    """
     key = b"\x01"
     S = ksa(key)
     # Check the length of S
@@ -10,16 +16,15 @@ def test_ksa_small_key():
     assert sorted(S) == list(range(256))
 
 
-
-def test_prga_output_length():
+def test_binary_data_encryption():
     """
-    Test the PRGA function to ensure it returns the correct number of bytes in the keystream.
+    Test encryption and decryption of binary data.
     """
-    key = b"testkey"
-    S = ksa(key)
-    output_len = 32
-    stream = prga(S, output_len)
-    assert len(stream) == output_len
+    key = b"binarykey"
+    plaintext = bytes(range(256))  # Binary data from 0x00 to 0xFF
+    ciphertext = rc4(key, plaintext)
+    decrypted = rc4(key, ciphertext)
+    assert decrypted == plaintext
 
 
 def test_encrypt_decrypt_roundtrip():
@@ -83,18 +88,33 @@ def test_special_chars():
     assert decrypted == plaintext
 
 
-# OPTIONAL: Testing the user menu with simulated input (example approach)
-def test_user_menu_simulated_input(monkeypatch):
+@pytest.mark.parametrize("key, plaintext", [
+    ("secret", b"Hello, User2 from queue!"),
+    ("short", b"abc"),
+    ("longkey", b"Some random text to test queue-based flow"),
+])
+def test_queue_communication(key, plaintext):
     """
-    Demonstrates how you might test user_menu() with Pytest monkeypatch.
+    Tests the queue-based communication between User1 and User2.
+    Checks that the decrypted text matches the original plaintext.
     """
-    from io import StringIO
-    from rc4 import user_menu
+    message_queue = queue.Queue()
+    result_queue = queue.Queue()
 
-    # Sequence of inputs: first "3" to trigger tests, then "4" to exit the menu.
-    simulated_inputs = StringIO("3\n4\n")
-    monkeypatch.setattr('sys.stdin', simulated_inputs)
+    # Spawn threads
+    t1 = threading.Thread(target=user1_encrypt, args=(key, plaintext, message_queue))
+    t2 = threading.Thread(target=user2_decrypt, args=(key, message_queue, result_queue))
 
-    # Run user_menu() - It should handle the inputs without error.
-    user_menu()
+    # Start threads
+    t1.start()
+    t2.start()
 
+    # Wait for threads to finish
+    t1.join()
+    t2.join()
+
+    # Verify the result
+    decrypted = result_queue.get()
+    assert decrypted == plaintext, (
+        f"Decrypted text ({decrypted}) does not match original ({plaintext})."
+    )

@@ -1,7 +1,9 @@
 
-# ECRYP-RC4 Cipher Application
+# ✨ ECRYP-RC4 Cipher Application ✨
 
-## Table of Contents
+---
+
+## 📚 Table of Contents
 1. [Introduction & Short Theory](#introduction--short-theory)
 2. [Functional Description of the Application](#functional-description-of-the-application)
 3. [Code Structure & Explanation](#code-structure--explanation)
@@ -18,20 +20,102 @@
 7. [Conclusion](#conclusion)
 8. [References](#references)
 
-## Introduction & Short Theory
-RC4 is a stream cipher known for its simplicity and speed in software. It uses a variable-length key to initialize a 256-byte state array with a pseudo-random permutation. The algorithm then generates a keystream that is XORed with the plaintext to produce ciphertext. Decryption uses the same process, XORing the ciphertext with the keystream to recover the original plaintext.
+---
 
-## Functional Description of the Application
+## 🎓 Introduction & Short Theory
+What is RC4? <br>
+RC4 (Rivest Cipher 4) is a stream cipher designed by Ron Rivest in 1987. It is simple in design and was widely used due to its speed and simplicity, though it is now considered deprecated for many secure applications because of discovered vulnerabilities in certain usage modes. However, it remains an instructive example for learning stream cipher fundamentals.
+
+Overview of the Algorithm <br>
+RC4 generates a keystream of pseudo-random bytes, which is then XORed with the plaintext to produce ciphertext. Decryption is the same operation: ciphertext XOR the same keystream recovers the plaintext.
+
+RC4 has two major phases: <br>
+1. Key-Scheduling Algorithm (KSA): <br>
+    - Input: user-provided key (of length L bytes). <br>
+    - Output: an initial permutation of integers 𝑆 (values 0 to 255). <br>
+    - Process (pseudocode): 
+    ```python
+        S = [0, 1, 2, ..., 255]
+        j = 0
+        for i in range(0..255):
+            j = (j + S[i] + key[i mod L]) mod 256
+            swap(S[i], S[j])
+            
+    ```
+2. Pseudo-Random Generation Algorithm (PRGA)
+    - Input: the array 𝑆 produced by KSA. <br>
+    - Output: a keystream of bytes. <br>
+    - Process (pseudocode): 
+    ```python
+        i = 0
+        j = 0
+        while more bytes needed:
+            i = (i + 1) mod 256
+            j = (j + S[i]) mod 256
+            swap(S[i], S[j])
+            K = S[(S[i] + S[j]) mod 256]
+            output K
+    ```
+
+Encryption/Decryption is simply: <br>
+
+    Ciphertext = Plaintext ⊕ Keystream 
+
+    Plaintext = Ciphertext ⊕ Keystream
+
+---
+
+## ⚙️ Functional Description of the Application
 This application implements the RC4 encryption algorithm with a console-based user menu. Users can:
-- Encrypt plaintext using an ASCII key.
-- Decrypt ciphertext (provided as a hex-encoded string) using the same key.
-- Run a series of predefined tests to verify the correctness of the implementation.
-- Exit the application.
+- 🔐 Encrypt plaintext using an ASCII key.
+- 🔓 Decrypt ciphertext (provided as a hex-encoded string) using the same key.
+- 🧪 Run a series of predefined tests to verify the correctness of the implementation.
+- 🚪 Exit the application.
 
-## Code Structure & Explanation
+---
+
+## 🛠️ Code Structure & Explanation
 - **`ksa(key_bytes)`**: Implements the Key-Scheduling Algorithm that initializes and scrambles the state array `S` using the provided key.
+```python
+def ksa(key_bytes):
+    S = list(range(256))
+    j = 0
+    
+    if (len(key_bytes) == 0):
+        print("Key cannot be empty")
+        key_bytes = input("Enter your key (ASCII text) again: ")
+
+    key_len = len(key_bytes)
+
+    for i in range(256):
+        j = (j + S[i] + key_bytes[i % key_len]) % 256
+        S[i], S[j] = S[j], S[i]
+    return S
+```
 - **`prga(S, data_length)`**: Implements the Pseudo-Random Generation Algorithm to produce a keystream of the specified length using the state array `S`.
+```python
+def prga(S, data_length):
+    i = 0
+    j = 0
+    keystream = []
+    for _ in range(data_length):
+        i = (i + 1) % 256
+        j = (j + S[i]) % 256
+        S[i], S[j] = S[j], S[i]
+        K = S[(S[i] + S[j]) % 256]
+        keystream.append(K)
+    return keystream
+```
 - **`rc4(key, data)`**: Uses `ksa` and `prga` to either encrypt or decrypt data depending on the given key.
+```python
+def rc4(key, data):
+    if isinstance(key, str):
+        key = key.encode('utf-8')
+    S = ksa(key)
+    keystream = prga(S, len(data))
+    result = bytes([d ^ k for d, k in zip(data, keystream)])
+    return result
+```
 - **`user_menu()`**: Provides an interactive console menu for encryption, decryption, testing, and exiting the application.
 - **Test Cases (`test.py`)**: Contains various tests to validate the functionality and correctness of the RC4 implementation.
 ### `rc4.py`
@@ -42,54 +126,22 @@ This file contains all of our **RC4** functionality plus a console-based UI. The
 <summary><strong>Click to expand <code>rc4.py</code> content</strong></summary>
 
 ```python
-#!/usr/bin/env python3
-"""
-ECRYP-RC4: Implementation of RC4 cipher with a console user menu
-
-Author: Your Name
-Date: YYYY-MM-DD
-
-Description:
-  1. ksa(key_bytes) -> Creates the S array from 0..255
-  2. prga(S, data_length) -> Generates keystream bytes
-  3. rc4(key, data) -> High-level encryption/decryption
-  4. user_menu() -> Console-based interface
-  5. main() -> Entry point
-
-Usage (console):
-  python rc4.py
-"""
 def ksa(key_bytes):
-    """
-    Key-Scheduling Algorithm (KSA).
-
-    References:
-      - RC4 algorithm specification
-      - This function is tested in test_ksa_small_key (test_rc4.py)
-
-    :param key_bytes: The user-provided key, as bytes
-    :return: A permuted list S of 256 bytes
-    """
     S = list(range(256))
     j = 0
+    
+    if (len(key_bytes) == 0):
+        print("Key cannot be empty")
+        key_bytes = input("Enter your key (ASCII text) again: ")
+
     key_len = len(key_bytes)
+
     for i in range(256):
         j = (j + S[i] + key_bytes[i % key_len]) % 256
         S[i], S[j] = S[j], S[i]
     return S
 
 def prga(S, data_length):
-    """
-    Pseudo-Random Generation Algorithm (PRGA).
-
-    References:
-      - RC4 algorithm specification
-      - This function is tested in test_prga_output_length (test_rc4.py)
-
-    :param S: The permuted list from ksa()
-    :param data_length: The number of keystream bytes needed
-    :return: A list of keystream bytes
-    """
     i = 0
     j = 0
     keystream = []
@@ -102,130 +154,123 @@ def prga(S, data_length):
     return keystream
 
 def rc4(key, data):
-    """
-    Encrypt/Decrypt data using RC4 with the given key.
-
-    :param key: str or bytes (the encryption key)
-    :param data: bytes (plaintext or ciphertext)
-    :return: bytes (encrypted or decrypted result)
-
-    This function is tested in test_encrypt_decrypt_roundtrip (test_rc4.py)
-    """
     if isinstance(key, str):
-        key = key.encode('utf-8')  # Convert ASCII string to bytes
-
-    # 1) Key-scheduling
+        key = key.encode('utf-8')
     S = ksa(key)
-
-    # 2) Generate keystream
     keystream = prga(S, len(data))
-
-    # 3) XOR keystream with data
-    return bytes([d ^ k for d, k in zip(data, keystream)])
-
-def user_menu():
-    """
-    A simple interactive console menu for encryption/decryption.
-
-    Tested manually and also in test_user_menu_simulated_input (test_rc4.py)
-    """
-    while True:
-        print("\n====== ECRYP-RC4 User Menu ======")
-        print("1) Encrypt")
-        print("2) Decrypt")
-        print("3) Exit")
-        choice = input("Choose an option (1/2/3): ").strip()
-
-        if choice == '1':
-            key = input("Enter your key (ASCII text): ")
-            plaintext = input("Enter your plaintext (ASCII text): ")
-            ciphertext = rc4(key, plaintext.encode('utf-8'))
-            print(f"Ciphertext (hex): {ciphertext.hex()}")
-        elif choice == '2':
-            key = input("Enter your key (ASCII text): ")
-            ciphertext_hex = input("Enter your ciphertext (hex-encoded): ")
-            try:
-                ciphertext = bytes.fromhex(ciphertext_hex)
-            except ValueError:
-                print("Error: invalid hex input.")
-                continue
-            decrypted = rc4(key, ciphertext)
-            try:
-                print(f"Decrypted text: {decrypted.decode('utf-8')}")
-            except UnicodeDecodeError:
-                print("Decrypted result is not valid UTF-8 text.")
-                print("Raw bytes:", decrypted)
-        elif choice == '3':
-            print("Exiting...")
-            break
-        else:
-            print("Invalid choice. Please select 1, 2 or 3.")
-
-def main():
-    """
-    Entry point, calls user_menu().
-    """
-    user_menu()
-
-if __name__ == "__main__":
-    main() 
+    result = bytes([d ^ k for d, k in zip(data, keystream)])
+    return result
 
 ```
 
 </details>
 
-## User Interface Menu (Console Mode)
+## 💻 User Interface Menu (Console Mode)
 When the application is run, it presents a menu:
-    ====== ECRYP-RC4 User Menu ======
 
-    1) Encrypt
-    2) Decrypt
-    3) Run tests
-    4) Exit Choose an option (1/2/3/4):
+![Menu Example](img\Menu.png)
 
-Users can select an option by entering the corresponding number to perform encryption, decryption, run tests, or exit.
+Users can select an option by selection the corresponding option to perform encryption, decryption, run tests, or exit using arrows.
 
-## Test Cases
+## 🧪 Test Cases
 
-[![Run Tests](https://github.com/BTwiiin/RC4/actions/workflows/run-tests.yml/badge.svg)](https://github.com/BTwiiin/RC4/blob/master/.github/workflows/run-test.yml)
+Click the badge below to view and manually trigger the test workflow:
 
+[![Run Tests](https://github.com/BTwiiin/RC4/actions/workflows/run-test.yml/badge.svg)](https://github.com/BTwiiin/RC4/actions/workflows/run-test.yml)
 
 ### Test Case 1: Known RFC 6229 Vector (Key: "Key")
 - **Objective:** Validate encryption against a known test vector from RFC 6229.
 - **Details:** Uses key `"Key"` and plaintext `"Plaintext"`. The ciphertext should match the known value from RFC 6229.
+```python
+def test_known_vector_rfc6229():
+    key = "Key"
+    plaintext = b"Plaintext"
+    known_ciphertext_hex = "bbf316e8d940af0ad3"  # Example placeholder
+    ciphertext = rc4(key, plaintext)
+    assert ciphertext.hex() == known_ciphertext_hex.lower()
+```
 
 ### Test Case 2: Simple ASCII Key and Plaintext
 - **Objective:** Test basic encryption and decryption.
 - **Details:** Use simple ASCII strings for key and plaintext. Ensure decryption returns the original plaintext.
+```python
+def test_encrypt_decrypt_roundtrip():
+    key = "secret"
+    plaintext = b"Hello World!"
+    ciphertext = rc4(key, plaintext)
+    decrypted = rc4(key, ciphertext)
+    assert decrypted == plaintext
+```
 
 ### Test Case 3: Empty Plaintext
 - **Objective:** Verify that encryption of an empty plaintext yields an empty ciphertext.
 - **Details:** Provide a non-empty key and an empty plaintext. The output should also be empty.
+```python
+def test_empty_plaintext():
+    key = "empty"
+    plaintext = b""
+    ciphertext = rc4(key, plaintext)
+    assert ciphertext == b""
+```
 
 ### Test Case 4: 1-Byte Key
 - **Objective:** Validate functionality with a minimal key length.
 - **Details:** Use a 1-byte key (e.g., `"\x01"`) and check properties of the state array after KSA.
+```python
+def test_ksa_small_key():
+    key = b"\x01"
+    S = ksa(key)
+    assert len(S) == 256
+    assert sorted(S) == list(range(256))
+```
 
 ### Test Case 5: Longer Key (256 bytes)
 - **Objective:** Ensure the algorithm handles a maximum-length key correctly.
 - **Details:** Use a key consisting of 256 bytes (values 0 to 255). Encrypt and decrypt to verify correctness.
+```python
+def test_large_key():
+    key = bytes(range(256))
+    plaintext = b"Test with large key"
+    ciphertext = rc4(key, plaintext)
+    decrypted = rc4(key, ciphertext)
+    assert decrypted == plaintext
+```
 
 ### Test Case 6: Binary Data Encryption
 - **Objective:** Verify encryption and decryption of binary data.
 - **Details:** Use binary data as plaintext to ensure the algorithm handles non-text bytes.
+```python
+def test_binary_data_encryption():
+    key = b"binarykey"
+    plaintext = bytes(range(256))
+    ciphertext = rc4(key, plaintext)
+    decrypted = rc4(key, ciphertext)
+    assert decrypted == plaintext
+```
 
 ### Test Case 7: Special Characters and Repeated Encryption/Decryption
 - **Objective:** Test keys and plaintexts with special characters and multiple encryption/decryption cycles.
 - **Details:** Use keys and plaintexts containing special characters (e.g., `!@#$%^&*()`), newlines, tabs, etc., and repeat the process to verify consistency.
+```python
+def test_special_chars():
+    key = "!@#$%^&*()"
+    plaintext = b"Line1\nLine2\r\n\tTabbed"
+    ciphertext = rc4(key, plaintext)
+    decrypted = rc4(key, ciphertext)
+    assert decrypted == plaintext
+```
 
-## Screenshots
-*Include screenshots of the application in action here.*  
-![Encryption Example]()  
-![Decryption Example]()
+## 📸 Screenshots
+Encryption:
 
-## Conclusion
-The RC4 cipher implementation demonstrates how a stream cipher can be built and tested in a console application. It handles various edge cases including empty plaintexts, short and long keys, and special characters. Through thorough testing, we confirm the correctness and robustness of the implementation.
+![Encryption Example](img\Encrypt.png)  
 
-## References
-- [RFC 6229 - Test Vectors for RC4](https://tools.ietf.org/html/rfc6229)
+Decryption:
+
+![Decryption Example](img\Decrypt.png)
+
+Simulation:
+
+![Decryption Example](img\Simulation.png)
+## 📚 References
 - [Wikipedia: RC4](https://en.wikipedia.org/wiki/RC4)
